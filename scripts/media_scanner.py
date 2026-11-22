@@ -42,7 +42,7 @@ def run(args, timeout=None):
 
 
 def probe(path, ffprobe):
-    return json.loads(run([ffprobe, "-v", "error", "-show_streams", "-show_format", "-of", "json", path], timeout=45))
+    return json.loads(run([ffprobe, "-v", "error", "-show_streams", "-show_format", "-of", "json", "-protocol_whitelist", "file", path], timeout=45))
 
 
 def positive(value):
@@ -69,7 +69,7 @@ def inspect(path, relative, ffprobe, ffmpeg):
             raise ValueError("영상 또는 이미지 스트림을 찾을 수 없습니다.")
         width, height = int(stream["width"]), int(stream["height"])
         if kind == "image" and path.suffix.lower() == ".webp" and (width <= 0 or height <= 0):
-            decoded = subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-i", str(path),
+            decoded = subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(path),
                                       "-frames:v", "1", "-c:v", "png", "-f", "image2pipe", "-"],
                                      capture_output=True, timeout=60, check=False)
             if decoded.returncode or decoded.stdout[:8] != b"\x89PNG\r\n\x1a\n":
@@ -92,7 +92,7 @@ def inspect(path, relative, ffprobe, ffmpeg):
                      rotation=rotation)
         if kind == "video" and duration is None:
             raise ValueError("영상 길이를 확인할 수 없습니다.")
-        run([ffmpeg, "-nostdin", "-v", "error", "-xerror", "-i", path, "-map", f"0:{stream['index']}",
+        run([ffmpeg, "-nostdin", "-v", "error", "-xerror", "-protocol_whitelist", "file", "-i", path, "-map", f"0:{stream['index']}",
              "-frames:v", "1", "-c:v", "png", "-f", "null", "-"], timeout=60)
     except (RuntimeError, ValueError, OSError, KeyError, subprocess.TimeoutExpired) as error:
         entry["error"] = str(error)

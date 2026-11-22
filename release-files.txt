@@ -50,3 +50,4 @@ scripts/package_release.py
 scripts/reel_engine.py
 tests/step4_e2e.py
 tests/caption_color_tests.py
+scripts/local_media.py

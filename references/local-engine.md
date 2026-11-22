@@ -10,15 +10,16 @@ Codex는 먼저 `plan`으로 초안을 생성하고, 사용자가 알려 준 장
 
 ## 실행
 
-스킬 폴더 기준 예시입니다. Windows는 `py -3`, macOS는 `python3`를 사용할 수 있습니다. 작업 폴더에 결과를 남기려면 `--output`을 지정합니다. Codex가 사용자 대신 실행할 수 있습니다.
+프로그램과 Git 저장소 밖에, 동기화되지 않는 로컬 폴더를 작업 공간으로 지정하세요. 아래에서 `<작업 폴더>`에 실제 경로를 넣습니다. 이미 `input`에 있는 원본은 그대로 읽습니다. 기존 영상들이 같은 폴더에 있으면 그 폴더를 `input`으로 갖는 상위 경로를 사용하세요.
 
 ```powershell
-py -3 scripts/reel_engine.py auto '<입력 폴더>' --project-id my-reel --title '오늘의 기록' --hook '처음 본 순간' --seconds 30
-py -3 scripts/reel_engine.py plan '<입력 폴더>' --project-id my-reel --title '오늘의 기록' --seconds 30
-py -3 scripts/reel_engine.py validate 'output/my-reel/v001/reel-project.json'
-py -3 scripts/reel_engine.py render 'output/my-reel/v001/reel-project.json'
-py -3 scripts/reel_engine.py render 'output/my-reel/v001/reel-project.json' --cover-only
+py -3 scripts/reel_engine.py --workspace '<작업 폴더>' init
+py -3 scripts/reel_engine.py --workspace '<작업 폴더>' plan --project-id my-reel --title '오늘의 기록' --seconds 15
+py -3 scripts/reel_engine.py --workspace '<작업 폴더>' validate '<작업 폴더>/projects/my-reel/v001/reel-project.json'
+py -3 scripts/reel_engine.py --workspace '<작업 폴더>' render '<작업 폴더>/projects/my-reel/v001/reel-project.json'
 ```
+
+기획안을 생략하고 바로 제작하려면 `plan` 대신 `auto`를 사용하세요. `render --cover-only`는 표지만 출력합니다. `--workspace`는 하위 명령 앞에 둡니다. Codex가 명령을 대신 실행할 수 있습니다. 기존 합성 테스트용 `--output` 모드와 이전 JSON은 계속 사용할 수 있습니다.
 
 - `auto`는 폴더를 재귀 스캔해 파일명 순으로 계획하고 바로 렌더링합니다. 기본 계획은 원본 범위에서 목표 시간을 균등 분배합니다. 합계가 부족하면 목표를 줄이거나 자료를 추가합니다. 제목 이후에는 파일명 자막을 사용하며, 순서를 바꾸고 싶다면 JSON을 수정합니다.
 - `plan`은 검증된 초안과 매니페스트까지만 작성합니다. 초안을 고친 뒤 `validate`로 검사하고 `render`를 실행하면 새 버전을 생성합니다. 영상 길이는 30fps 프레임 단위로 지정합니다.
@@ -37,7 +38,7 @@ py -3 scripts/reel_engine.py render 'output/my-reel/v001/reel-project.json' --co
 
 Codex가 대표 장면을 실제로 검토한 경우에만 `planningBasis: "visually-reviewed"`, `captionAccent`, `captionAccentReason`으로 포인트 색을 추천할 수 있습니다. 엔진은 여러 샘플의 색 분포가 안정적이고 배경과의 구분과 글자 대비를 충족할 때만 적용합니다. 대비비는 저해상도 대표 프레임에 반투명 박스를 합성한 추정치입니다. 움직이는 배경 전수 검사나 WCAG 인증으로 해석할 수 없습니다. [WCAG 대비 기준](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
 
-`save-style my-style examples/personal-style.json`으로 별도 개인 설정을 등록합니다. 새 기획안에는 `--personal-style my-style`, 기존 기획안에는 `"personalStyle": "my-style"`을 사용합니다. 기본 적용 순서는 내장 프리셋, 개인 스타일, 해당 큐나 표지의 개별 설정입니다. 폰트 후보, 글씨 크기·색, 자막 위치·배경·패딩, 표지 프리셋·레이어 위치를 저장할 수 있습니다. 사용 권한이 있는 폰트 파일은 `remotion/public/fonts/`에 넣고 `config/local-fonts.json`에 `{"family":"My Font","file":"fonts/my-font.woff2","weight":"300 700"}` 형식으로 등록합니다.
+`--workspace <작업 폴더> save-style my-style examples/personal-style.json`으로 별도 개인 설정을 등록합니다. 새 기획안에는 `--personal-style my-style`, 기존 기획안에는 `"personalStyle": "my-style"`을 사용합니다. 기본 적용 순서는 내장 프리셋, 개인 스타일, 해당 큐나 표지의 개별 설정입니다. 폰트 후보, 글씨 크기·색, 자막 위치·배경·패딩, 표지 프리셋·레이어 위치를 저장할 수 있습니다. 사용 권한이 있는 폰트 파일은 `remotion/public/fonts/`에 넣고 `config/local-fonts.json`에 `{"family":"My Font","file":"fonts/my-font.woff2","weight":"300 700"}` 형식으로 등록합니다.
 
 [검증 스키마](../config/reel-project.schema.json)를 사용합니다. `sourceStart`와 `sourceEnd`는 원본 초 단위이고, 종료는 제외됩니다. `timelineStartFrame`과 `durationFrames`는 타임라인의 프레임 단위입니다. 컷 순서를 바꿀 때 각 컷 시작 프레임을 앞선 길이의 합으로 재계산하고, 길이를 바꿀 때 후속 자막과 `targetDuration`도 확인합니다.
 
@@ -45,6 +46,8 @@ Codex가 대표 장면을 실제로 검토한 경우에만 `planningBasis: "visu
 
 ## 결과와 분석 범위
 
-`output/<projectId>/vNNN/`에 `reel.mp4`, `cover.png`, `reel-project.json`, `captions.json`, `render-report.json`과 `media-manifest.json`을 저장합니다. 렌더 완료 뒤 영상 코덱·크기·프레임레이트·프레임 수·오디오 유무와 PNG 크기를 확인합니다.
+작업 공간의 `output/<projectId>/vNNN/`에 `reel.mp4`, `cover.png`, `render-report.json`을 저장합니다. `projects/<projectId>/vNNN/`에는 계획과 미디어 목록, 자막 및 색상 기록을 저장합니다. 개인 스타일은 `projects/presets/`에 보관합니다. 기획안 저장과 출력의 버전 번호는 각각 증가하므로 결과와 연결된 계획 경로는 `render-report.json`에서 확인하세요. 원본 경로가 기록된 계획과 보고서는 로컬에 보관하세요.
+
+원본 영상은 FFmpeg가 읽기 전용으로 열고, 렌더를 위해 임시 변환본을 만듭니다. 표지 프레임과 음악 변환본도 임시 저장되며 정상 종료와 처리된 오류에서 임시 폴더를 정리합니다. 사진은 이 PC의 루프백 주소를 통해 Chromium에서 읽습니다. 이 제작 경로는 사용자 미디어를 외부 API나 클라우드에 전송하지 않습니다.
 
 스캐너는 FFprobe의 메타데이터와 FFmpeg 첫 프레임 디코딩으로 초기 파일 오류를 발견합니다. 첫 프레임 이후 손상은 렌더 때 드러날 수 있습니다. 영상의 내용, 발화, 감정, 하이라이트는 스캐너가 판정하지 않습니다. 사용자가 내용을 설명하거나 Codex가 실제로 확인한 이미지와 프레임을 편집 근거로 씁니다.

@@ -10,6 +10,7 @@ import struct
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
+from local_media import serve_media
 
 from media_scanner import IMAGES, ROOT, VIDEOS, inspect, probe, run, scan, tool, write_json
 from caption_colors import KEYS as COLOR_KEYS, STYLE_KEYS as COLOR_STYLE_KEYS, palettes, resolve as resolve_colors
@@ -36,15 +37,15 @@ def frames(seconds):
     return math.floor(seconds * FPS + 0.5)
 
 
-def personal_style_path(name):
+def personal_style_path(name, style_root=PERSONAL_STYLES):
     fail(re.fullmatch(r"[a-z0-9][a-z0-9-]{0,59}", name) is not None, "개인 프리셋 이름은 영문 소문자·숫자·하이픈을 사용하세요.")
-    return PERSONAL_STYLES / f"{name}.json"
+    return style_root / f"{name}.json"
 
 
-def read_personal_style(name):
+def read_personal_style(name, style_root=PERSONAL_STYLES):
     if not name:
         return {}
-    path = personal_style_path(name)
+    path = personal_style_path(name, style_root)
     fail(path.is_file(), f"개인 프리셋 {name}이 없습니다. save-style로 먼저 등록하세요.")
     run([node(), REMOTION / "validate-plan.cjs", path, "--style"], timeout=30)
     return json.loads(path.read_text(encoding="utf-8-sig"))
@@ -83,7 +84,7 @@ def select_cover(assets, clips, args):
     return first["assetId"], first["sourceStart"], "first-usable-video-frame"
 
 
-def build_plan(manifest, args):
+def build_plan(manifest, args, style_root=PERSONAL_STYLES):
     assets = [a for a in manifest["mediaAssets"] if a["error"] is None and
               not Path(a["path"]).resolve().is_relative_to(REFERENCE_FOLDER)]
     fail(bool(assets), "제작용 사진·영상을 찾지 못했습니다. 레퍼런스 외에 사용할 미디어와 표지를 선택해 주세요.")
@@ -114,7 +115,7 @@ def build_plan(manifest, args):
                       "motion": args.photo_motion if not movie else "none", "purpose": asset["filename"]})
         cursor += duration
     hook = args.hook or args.title
-    personal = read_personal_style(args.personal_style)
+    personal = read_personal_style(args.personal_style, style_root)
     cover = args.cover or personal.get("cover", {}).get("preset") or ("bold-hook" if args.content_type == "정보형" else
                            "playful-impact" if args.content_type == "인테리어 비포애프터" else "storytelling")
     cover_id, cover_time, selection = select_cover(assets, clips, args)
@@ -160,7 +161,7 @@ def read_plan(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def validate_plan(plan, manifest=None):
+def validate_plan(plan, manifest=None, input_root=None, style_root=PERSONAL_STYLES):
     palette = palettes()
     for field in ("captionColorPreset", "captionAccent"):
         if plan.get(field):
@@ -171,6 +172,7 @@ def validate_plan(plan, manifest=None):
     for a in plan["mediaAssets"]:
         fail(a["id"] not in assets, f"중복 미디어 ID: {a['id']}")
         path = Path(a["path"])
+        check_location(path, input_root)
         fail(path.is_absolute() and path.is_file(), f"미디어 경로를 확인하세요: {path}")
         fail(not path.resolve().is_relative_to(REFERENCE_FOLDER), f"스타일 레퍼런스 대신 제작용 미디어를 선택하세요: {path}")
         fail(path.suffix.lower() in IMAGES | VIDEOS, f"지원하는 확장자를 사용하세요: {path.name}")
@@ -212,7 +214,7 @@ def validate_plan(plan, manifest=None):
     good_time = cover["sourceTime"] == 0 if info["kind"] == "image" else cover["sourceTime"] < info["duration"]
     fail(good_time, "표지 sourceTime을 원본 범위 안으로 조정하세요. 사진에는 0을 사용합니다.")
     allowed = LAYERS[cover["preset"]]
-    personal_cover = read_personal_style(plan.get("personalStyle")).get("cover", {})
+    personal_cover = read_personal_style(plan.get("personalStyle"), style_root).get("cover", {})
     if personal_cover.get("preset", cover["preset"]) == cover["preset"]:
         fail(set(personal_cover.get("layers", {})) <= allowed, "개인 스타일에 현재 표지 프리셋과 맞지 않는 레이어가 있습니다.")
     required = "keyword" if cover["preset"] == "playful-impact" else "title"
@@ -222,6 +224,7 @@ def validate_plan(plan, manifest=None):
     music = plan["audioSettings"]["musicPath"]
     if music:
         path = Path(music)
+        check_location(path, input_root)
         fail(path.is_absolute() and path.is_file(), f"배경음악 경로를 확인하세요: {path}")
         fail(any(s["codec_type"] == "audio" for s in probe(path, ffprobe)["streams"]), "배경음악에 오디오 스트림이 없습니다.")
     return assets
@@ -243,41 +246,52 @@ def allocate(project_id, output_root):
     raise ValueError("출력 버전 번호를 할당할 수 없습니다.")
 
 
-def stage_media(plan, assets, public, cover_only=False):
+def stage_media(plan, assets, public, register, cover_only=False, style_root=PERSONAL_STYLES):
     ffmpeg = tool("ffmpeg")
-    shutil.copytree(REMOTION / "public", public)
     media = public / "engine-media"
-    media.mkdir()
+    media.mkdir(parents=True)
     paths = {}
-    used = set() if cover_only else {c["assetId"] for c in plan["clips"]}
+    used = () if cover_only else dict.fromkeys(clip["assetId"] for clip in plan["clips"])
     for asset_id in used:
         info = assets[asset_id]
         path = Path(info["path"])
         if info["kind"] == "image":
-            filename = asset_id + ".png"
-            run([ffmpeg, "-nostdin", "-v", "error", "-i", path, "-map", "0:v:0", "-frames:v", "1", media / filename], timeout=120)
+            paths[asset_id] = register(path)
         else:
-            filename = asset_id + path.suffix.lower()
-            shutil.copyfile(path, media / filename)
-        paths[asset_id] = "engine-media/" + filename
+            # OffthreadVideo caches its input. Feed it a temporary encode, never the original.
+            end = max(clip["sourceEnd"] for clip in plan["clips"] if clip["assetId"] == asset_id)
+            proxy = media / f"{asset_id}.mp4"
+            run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", path, "-t", end + 1 / FPS,
+                 "-map", "0:V:0", "-map", "0:a:0?", "-map_metadata", "-1", "-map_chapters", "-1",
+                 "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-crf", "16", "-preset", "fast",
+                 "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", proxy], timeout=1800)
+            paths[asset_id] = "engine-media/" + proxy.name
+
+    # Preserve locally configured font support without staging unrelated public assets.
+    fonts = REMOTION / "public" / "fonts"
+    if fonts.is_dir():
+        shutil.copytree(fonts, public / "fonts", ignore=lambda _, names: [
+            name for name in names if Path(name).suffix.lower() not in {".woff", ".woff2", ".ttf", ".otf"}
+        ])
 
     cover = plan["cover"]
     source = assets[cover["assetId"]]
     cover_name = "cover-source.png"
-    if source["kind"] == "image" and cover["assetId"] in paths:
-        shutil.copyfile(public / paths[cover["assetId"]], media / cover_name)
+    if source["kind"] == "image":
+        cover_path = register(Path(source["path"]))
     else:
-        run([ffmpeg, "-nostdin", "-v", "error", "-ss", cover["sourceTime"], "-i", source["path"],
-             "-map", "0:V:0", "-frames:v", "1", media / cover_name], timeout=120)
-    fail((media / cover_name).is_file(), "표지 프레임을 추출할 수 없습니다. sourceTime을 앞쪽으로 조정하세요.")
+        run([ffmpeg, "-nostdin", "-v", "error", "-ss", cover["sourceTime"], "-protocol_whitelist", "file",
+             "-i", source["path"], "-map", "0:V:0", "-frames:v", "1", media / cover_name], timeout=120)
+        fail((media / cover_name).is_file(), "표지 프레임을 추출할 수 없습니다. sourceTime을 앞쪽으로 조정하세요.")
+        cover_path = "engine-media/" + cover_name
 
     music = None if cover_only else plan["audioSettings"]["musicPath"]
     if music:
-        run([ffmpeg, "-nostdin", "-v", "error", "-i", music, "-map", "0:a:0",
+        run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", music, "-map", "0:a:0",
              "-t", plan["targetDuration"], "-c:a", "pcm_s16le", "-ar", "48000", "-ac", "2",
              media / "music.wav"], timeout=180)
-    return {"plan": plan, "assetPaths": paths, "coverPath": "engine-media/" + cover_name,
-            "personalStyle": read_personal_style(plan.get("personalStyle")), "coverOnly": cover_only,
+    return {"plan": plan, "assetPaths": paths, "coverPath": cover_path,
+            "personalStyle": read_personal_style(plan.get("personalStyle"), style_root), "coverOnly": cover_only,
             "musicPath": "engine-media/music.wav" if music else None}
 
 
@@ -305,33 +319,37 @@ def verify(version, plan, expect_audio):
             "hasAudio": audio, "coverFormat": "png"}
 
 
-def render(plan_path, output_root, manifest=None, browser=None, existing_version=None, cover_only=False):
+def render(plan_path, output_root, manifest=None, browser=None, existing_version=None, cover_only=False,
+           projects_root=None, input_root=None, style_root=PERSONAL_STYLES):
     stage = "validate"
     version = existing_version
     try:
         plan = read_plan(plan_path)
-        assets = validate_plan(plan, manifest)
+        assets = validate_plan(plan, manifest, input_root, style_root)
         version = version or allocate(plan["projectId"], output_root)
-        if version / "reel-project.json" != plan_path:
-            write_json(version / "reel-project.json", plan)
-        if not (version / "media-manifest.json").exists():
-            write_json(version / "media-manifest.json", manifest or {
+        records = version
+        if projects_root:
+            records = plan_path.parent if manifest is not None else allocate(plan["projectId"], projects_root)
+        if records / "reel-project.json" != plan_path:
+            write_json(records / "reel-project.json", plan)
+        if not (records / "media-manifest.json").exists():
+            write_json(records / "media-manifest.json", manifest or {
                 "schemaVersion": 1, "inputRoot": None, "analysisMode": "metadata-and-first-frame-decode",
                 "mediaAssets": [{**info, "id": asset_id} for asset_id, info in assets.items()],
             })
         stage = "stage-media"
         color_report = None
         if not cover_only:
-            personal = read_personal_style(plan.get("personalStyle")).get("caption", {})
+            personal = read_personal_style(plan.get("personalStyle"), style_root).get("caption", {})
             color_report = resolve_colors(plan, assets, personal)
-            write_json(version / "caption-color-report.json", color_report)
+            write_json(records / "caption-color-report.json", color_report)
             print(f"[caption-color] {color_report['captionColorPreset']} · {color_report['captionColorReason']}", flush=True)
-        write_json(version / "captions.json", plan["captions"])
+        write_json(records / "captions.json", plan["captions"])
         expect_audio = bool(plan["audioSettings"]["musicPath"] or any(
             c["useSourceAudio"] and assets[c["assetId"]]["hasAudio"] for c in plan["clips"]))
-        with TemporaryDirectory(prefix="render-", dir=version) as temp:
+        with TemporaryDirectory(prefix="render-", dir=version) as temp, serve_media() as register:
             work = Path(temp)
-            props = stage_media(plan, assets, work / "public", cover_only)
+            props = stage_media(plan, assets, work / "public", register, cover_only, style_root)
             if color_report:
                 props["captionColors"] = {s: color_report[k] for k, s in zip(COLOR_KEYS, COLOR_STYLE_KEYS)}
                 if plan.get("captionColorPreset") or any(k in plan for k in COLOR_KEYS):
@@ -348,7 +366,9 @@ def render(plan_path, output_root, manifest=None, browser=None, existing_version
         metadata = verify_cover(version, plan) if cover_only else verify(version, plan, expect_audio)
         if cover_only:
             metadata["coverOnly"] = True
-        write_json(version / "render-report.json", {"status": "success", "stage": stage, **metadata})
+        write_json(version / "render-report.json", {"status": "success", "stage": stage,
+                                                      "projectPlan": str(records / "reel-project.json"), **metadata})
+        print(f"[project] {records}", flush=True)
         print(f"[done] {version}", flush=True)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, StopIteration, KeyError) as error:
         if version:
@@ -356,12 +376,33 @@ def render(plan_path, output_root, manifest=None, browser=None, existing_version
         raise RuntimeError(f"[{stage}] {error}") from error
 
 
+def check_location(path, root):
+    if root is not None:
+        fail(path.resolve().is_relative_to(root), f"허용된 작업 폴더 ({root})의 경로를 사용하세요: {path}")
+
+
+def workspace_paths(path):
+    root = path.resolve()
+    fail(not root.drive.startswith("\\\\"), "네트워크 공유 대신 로컬 작업 폴더를 사용하세요.")
+    fail(not root.is_relative_to(ROOT) and not any((ancestor / ".git").exists()
+         for ancestor in (root, *root.parents)), "작업 공간은 프로그램 및 Git 저장소 밖에 지정하세요.")
+    folders = [root / name for name in ("input", "output", "projects")]
+    for folder in folders:
+        fail(folder.resolve() == folder and not ROOT.is_relative_to(folder) and not (folder / ".git").exists(),
+             f"작업 폴더는 별도의 로컬 폴더여야 합니다: {folder}")
+    for folder in folders:
+        folder.mkdir(parents=True, exist_ok=True)
+    return folders
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--workspace", type=Path, help="Local workspace outside the program and Git repositories")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("init", help="Create input, output and projects folders")
     for name in ("plan", "auto"):
         command = sub.add_parser(name)
-        command.add_argument("folder", type=Path)
+        command.add_argument("folder", type=Path, nargs="?")
         command.add_argument("--project-id", required=True)
         command.add_argument("--title", required=True)
         command.add_argument("--seconds", type=float, default=30)
@@ -391,38 +432,63 @@ def main():
     save.add_argument("name")
     save.add_argument("source", type=Path)
     for name in ("plan", "auto", "render"):
-        sub.choices[name].add_argument("--output", type=Path, default=ROOT / "output")
+        sub.choices[name].add_argument("--output", type=Path, default=None)
         sub.choices[name].add_argument("--browser", type=Path)
     args = parser.parse_args()
     stage = "scan"
     try:
+        input_root = projects_root = None
+        args.style_root = PERSONAL_STYLES
+        if args.workspace:
+            stage = "workspace"
+            fail(getattr(args, "output", None) is None, "--workspace와 --output은 함께 지정할 수 없습니다.")
+            input_root, args.output, projects_root = workspace_paths(args.workspace)
+            args.style_root = projects_root / "presets"
+            fail(args.style_root.resolve() == args.style_root, "개인 프리셋 폴더가 다른 경로를 가리킵니다.")
+        elif hasattr(args, "output"):
+            stage = "workspace"
+            fail(args.output is not None, "실제 제작은 --workspace를 지정하세요. 기존 테스트 모드는 --output이 필요합니다.")
+        if args.command == "init":
+            fail(input_root is not None, "--workspace로 작업 폴더를 지정하세요.")
+            print(f"[workspace] {input_root.parent}", flush=True)
+            return
+        stage = "scan"
         if args.command in {"auto", "plan"}:
+            folder = args.folder or input_root
+            fail(folder is not None, "입력 폴더 또는 --workspace를 지정하세요.")
+            for path in (folder, args.cover_photo, args.cover_video, args.music):
+                if path is not None:
+                    check_location(path, input_root)
             fail(math.isfinite(args.seconds), "유한한 초 단위 길이를 입력하세요.")
-            manifest = scan(args.folder)
+            manifest = scan(folder)
             stage = "plan"
-            version = allocate(args.project_id, args.output)
+            version = allocate(args.project_id, projects_root or args.output)
             manifest_path = version / "media-manifest.json"
             write_json(manifest_path, manifest)
             path = version / "reel-project.json"
-            write_json(path, build_plan(manifest, args))
+            write_json(path, build_plan(manifest, args, args.style_root))
             if args.command == "auto":
-                render(path, args.output, manifest, args.browser, version)
+                render(path, args.output, manifest, args.browser, None if projects_root else version,
+                       projects_root=projects_root, input_root=input_root, style_root=args.style_root)
             else:
-                validate_plan(read_plan(path), manifest)
+                validate_plan(read_plan(path), manifest, input_root, args.style_root)
                 print(f"[plan] {path}", flush=True)
         elif args.command == "validate":
             stage = "validate"
-            validate_plan(read_plan(args.plan))
+            check_location(args.plan, projects_root)
+            validate_plan(read_plan(args.plan), input_root=input_root, style_root=args.style_root)
             print("[validate] OK", flush=True)
         elif args.command == "save-style":
             stage = "save-style"
             run([node(), REMOTION / "validate-plan.cjs", args.source, "--style"], timeout=30)
-            dest = personal_style_path(args.name)
+            dest = personal_style_path(args.name, args.style_root)
             dest.parent.mkdir(parents=True, exist_ok=True)
             write_json(dest, json.loads(args.source.read_text(encoding="utf-8-sig")))
             print(f"[save-style] {dest}", flush=True)
         else:
-            render(args.plan.resolve(), args.output, browser=args.browser, cover_only=args.cover_only)
+            check_location(args.plan, projects_root)
+            render(args.plan.resolve(), args.output, browser=args.browser, cover_only=args.cover_only,
+                   projects_root=projects_root, input_root=input_root, style_root=args.style_root)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         message = str(error)
         tagged = ("[validate]", "[stage-media]", "[remotion]", "[verify]")

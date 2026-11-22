@@ -11,7 +11,7 @@ export type CoverContent = {
 export function ReelCover({preset, content}: {preset: Preset; content: CoverContent}) {
   const {background} = content;
   return <AbsoluteFill style={{background: background.color}}>
-    {background.photo ? <Img src={staticFile(background.photo)} style={{
+    {background.photo ? <Img src={(background.photo.startsWith('http://127.0.0.1:') ? background.photo : staticFile(background.photo))} style={{
       width: '100%', height: '100%', objectFit: 'cover', objectPosition: background.objectPosition,
     }} /> : null}
     {background.shade ? <AbsoluteFill style={{background: background.shade}} /> : null}

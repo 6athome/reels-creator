@@ -102,6 +102,10 @@ function ReelClip({clip, source, kind, volume}: {
   </AbsoluteFill>;
 }
 
+function renderAsset(path: string) {
+  return path.startsWith('http://127.0.0.1:') ? path : staticFile(path);
+}
+
 export function ReelTimeline({plan, assetPaths = {}, musicPath, personalStyle, captionColors}: ReelProjectProps) {
   const {durationInFrames, fps} = useVideoConfig();
   if (!plan) return <AbsoluteFill style={{backgroundColor: '#101318'}} />;
@@ -115,7 +119,7 @@ export function ReelTimeline({plan, assetPaths = {}, musicPath, personalStyle, c
   return <LocalFontLoader fonts={fontSettings.fonts}>
     {plan.clips.map((clip) => <Sequence key={clip.timelineStartFrame} from={clip.timelineStartFrame}
       durationInFrames={clip.durationFrames} premountFor={fps}>
-      <ReelClip source={staticFile(assetPaths[clip.assetId])} kind={assetKinds.get(clip.assetId)!} clip={clip}
+      <ReelClip source={renderAsset(assetPaths[clip.assetId])} kind={assetKinds.get(clip.assetId)!} clip={clip}
         volume={(frame) => audioSettings.sourceVolume * fade(frame + clip.timelineStartFrame)} />
     </Sequence>)}
     {musicPath ? <Html5Audio src={staticFile(musicPath)} loop loopVolumeCurveBehavior="extend"
