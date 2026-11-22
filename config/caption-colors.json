@@ -1,0 +1,42 @@
+{
+  "white": {
+    "captionBackgroundColor": "#FFFFFF",
+    "captionTextColor": "#171717",
+    "captionBackgroundOpacity": 0.96,
+    "group": "neutral"
+  },
+  "black": {
+    "captionBackgroundColor": "#181818",
+    "captionTextColor": "#FFFFFF",
+    "captionBackgroundOpacity": 0.96,
+    "group": "neutral"
+  },
+  "burgundy": {
+    "captionBackgroundColor": "#500008",
+    "captionTextColor": "#FFF7F7",
+    "captionBackgroundOpacity": 0.96,
+    "group": "accent",
+    "evidence": "warm"
+  },
+  "lime": {
+    "captionBackgroundColor": "#D8F08A",
+    "captionTextColor": "#23311B",
+    "captionBackgroundOpacity": 0.96,
+    "group": "accent",
+    "evidence": "green"
+  },
+  "sky-blue": {
+    "captionBackgroundColor": "#B9E8F3",
+    "captionTextColor": "#173642",
+    "captionBackgroundOpacity": 0.96,
+    "group": "accent",
+    "evidence": "blue"
+  },
+  "soft-pink": {
+    "captionBackgroundColor": "#F5C9D9",
+    "captionTextColor": "#542738",
+    "captionBackgroundOpacity": 0.96,
+    "group": "accent",
+    "evidence": "pink"
+  }
+}

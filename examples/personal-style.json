@@ -1,0 +1,26 @@
+{
+  "caption": {
+    "fontFamilies": [
+      "Noto Sans KR",
+      "Malgun Gothic",
+      "sans-serif"
+    ],
+    "fontSizePx": 46,
+    "color": "#FFF7F7",
+    "x": 540,
+    "y": 1320,
+    "backgroundColor": "#35242D",
+    "paddingXPx": 14,
+    "paddingYPx": 7
+  },
+  "cover": {
+    "preset": "storytelling",
+    "layers": {
+      "title": {
+        "x": 390,
+        "y": 660,
+        "fontSizePx": 62
+      }
+    }
+  }
+}

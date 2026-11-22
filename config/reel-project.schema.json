@@ -1,0 +1,472 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "REELS CREATOR edit plan",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,59}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetDuration": {
+      "type": "number",
+      "minimum": 0.04,
+      "maximum": 600
+    },
+    "fps": {
+      "const": 30
+    },
+    "resolution": {
+      "const": {
+        "width": 1080,
+        "height": 1920
+      }
+    },
+    "contentType": {
+      "enum": [
+        "정보형",
+        "스토리텔링",
+        "브이로그",
+        "제품 리뷰",
+        "인테리어 비포애프터"
+      ]
+    },
+    "targetAudience": {
+      "type": "string",
+      "minLength": 1
+    },
+    "planningBasis": {
+      "enum": [
+        "file-order",
+        "user-description",
+        "visually-reviewed"
+      ]
+    },
+    "story": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "hook": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endFrame": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "text",
+        "endFrame"
+      ],
+      "additionalProperties": false
+    },
+    "cover": {
+      "type": "object",
+      "properties": {
+        "preset": {
+          "enum": [
+            "bold-hook",
+            "storytelling",
+            "playful-impact"
+          ]
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^m-[0-9a-f]{16}$"
+        },
+        "sourceTime": {
+          "type": "number",
+          "minimum": 0
+        },
+        "objectPosition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/styleOverrides"
+          }
+        },
+        "selection": {
+          "enum": [
+            "user-photo",
+            "user-video-frame",
+            "first-usable-photo",
+            "first-usable-video-frame"
+          ]
+        }
+      },
+      "required": [
+        "preset",
+        "text",
+        "assetId",
+        "sourceTime"
+      ],
+      "additionalProperties": false
+    },
+    "preset": {
+      "const": "eunpanchi-signature"
+    },
+    "mediaAssets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^m-[0-9a-f]{16}$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "image",
+              "video"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "clips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "pattern": "^m-[0-9a-f]{16}$"
+          },
+          "sourceStart": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sourceEnd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "timelineStartFrame": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "durationFrames": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "fit": {
+            "enum": [
+              "cover",
+              "contain",
+              "blur"
+            ]
+          },
+          "useSourceAudio": {
+            "type": "boolean"
+          },
+          "motion": {
+            "enum": [
+              "none",
+              "push-in",
+              "pan-left",
+              "pan-right"
+            ]
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "objectPosition": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "assetId",
+          "sourceStart",
+          "sourceEnd",
+          "timelineStartFrame",
+          "durationFrames",
+          "fit",
+          "useSourceAudio",
+          "motion",
+          "purpose"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "captions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startFrame": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endFrame": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "style": {
+            "$ref": "#/definitions/styleOverrides"
+          },
+          "fadeFrames": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "text",
+          "startFrame",
+          "endFrame",
+          "style"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "audioSettings": {
+      "type": "object",
+      "properties": {
+        "sourceVolume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "musicPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "musicVolume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fadeOutFrames": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "sourceVolume",
+        "musicPath",
+        "musicVolume",
+        "fadeOutFrames"
+      ],
+      "additionalProperties": false
+    },
+    "renderSettings": {
+      "type": "object",
+      "properties": {
+        "codec": {
+          "const": "h264"
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      },
+      "required": [
+        "codec",
+        "concurrency"
+      ],
+      "additionalProperties": false
+    },
+    "personalStyle": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,59}$"
+    },
+    "captionColorMode": {
+      "enum": [
+        "auto",
+        "manual"
+      ]
+    },
+    "captionColorPreset": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,59}$"
+    },
+    "captionBackgroundColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "captionTextColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "captionBackgroundOpacity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "captionColorReason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "captionAccent": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,59}$"
+    },
+    "captionAccentReason": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "title",
+    "targetDuration",
+    "fps",
+    "resolution",
+    "contentType",
+    "targetAudience",
+    "planningBasis",
+    "story",
+    "hook",
+    "cover",
+    "preset",
+    "mediaAssets",
+    "clips",
+    "captions",
+    "audioSettings",
+    "renderSettings"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "styleOverrides": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fontSizePx": {
+          "type": "number",
+          "minimum": 1
+        },
+        "fontWeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "color": {
+          "type": "string",
+          "minLength": 1
+        },
+        "backgroundColor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "backgroundOpacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "paddingXPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "paddingYPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "lineGapPx": {
+          "type": "number",
+          "minimum": 0
+        },
+        "lineHeightPx": {
+          "type": "number",
+          "minimum": 1
+        },
+        "maxWidthPx": {
+          "type": "number",
+          "minimum": 1
+        },
+        "fontFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "personalStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "caption": {
+          "$ref": "#/definitions/styleOverrides"
+        },
+        "cover": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "preset": {
+              "enum": [
+                "bold-hook",
+                "storytelling",
+                "playful-impact"
+              ]
+            },
+            "layers": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/styleOverrides"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

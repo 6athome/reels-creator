@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "storytelling",
+  "kind": "cover",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "safeArea": {
+    "left": 88,
+    "top": 220,
+    "right": 920,
+    "bottom": 1470
+  },
+  "layers": [
+    {
+      "id": "title",
+      "position": {
+        "x": 375,
+        "y": 640,
+        "anchor": "center"
+      },
+      "maxWidthPx": 550,
+      "textAlign": "left",
+      "fontFamilies": [
+        "Pretendard",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        "sans-serif"
+      ],
+      "fontSizePx": 68,
+      "fontWeight": 350,
+      "color": "#FFF8F3",
+      "lineHeightPx": 84,
+      "letterSpacingPx": 0.5,
+      "maxLines": 2,
+      "background": null,
+      "shadow": {
+        "xPx": 0,
+        "yPx": 3,
+        "blurPx": 10,
+        "color": "#120D16",
+        "opacity": 0.68
+      },
+      "stroke": null,
+      "lineGapPx": 0,
+      "appearance": "cut"
+    }
+  ],
+  "photoShade": "linear-gradient(108deg, #130F15AA 0%, #130F156B 31%, #130F151E 64%, #130F1500 100%)"
+}

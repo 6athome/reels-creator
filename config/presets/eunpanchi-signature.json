@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "eunpanchi-signature",
+  "kind": "caption",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "safeArea": {
+    "left": 88,
+    "top": 220,
+    "right": 920,
+    "bottom": 1470
+  },
+  "layers": [
+    {
+      "id": "caption",
+      "position": {
+        "x": 540,
+        "y": 1382,
+        "anchor": "center"
+      },
+      "maxWidthPx": 760,
+      "textAlign": "center",
+      "fontFamilies": [
+        "Pretendard",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        "sans-serif"
+      ],
+      "fontSizePx": 44,
+      "fontWeight": 350,
+      "color": "#FFFFFF",
+      "lineHeightPx": 46,
+      "letterSpacingPx": 0.3,
+      "maxLines": 2,
+      "background": {
+        "mode": "per-line",
+        "color": "#181818",
+        "opacity": 0.96,
+        "paddingXPx": 12,
+        "paddingYPx": 6,
+        "borderRadiusPx": 0
+      },
+      "shadow": null,
+      "stroke": null,
+      "lineGapPx": 32,
+      "appearance": "cut"
+    }
+  ],
+  "captionColorMode": "auto",
+  "captionColorPreset": "black",
+  "captionBackgroundColor": "#181818",
+  "captionTextColor": "#FFFFFF",
+  "captionBackgroundOpacity": 0.96,
+  "captionColorReason": "AUTO 미분석 시 기본 블랙"
+}

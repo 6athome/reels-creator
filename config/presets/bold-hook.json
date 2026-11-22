@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "id": "bold-hook",
+  "kind": "cover",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "safeArea": {
+    "left": 88,
+    "top": 220,
+    "right": 920,
+    "bottom": 1470
+  },
+  "layers": [
+    {
+      "id": "title",
+      "position": {
+        "x": 504,
+        "y": 665,
+        "anchor": "center"
+      },
+      "maxWidthPx": 810,
+      "textAlign": "center",
+      "fontFamilies": [
+        "Pretendard",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        "sans-serif"
+      ],
+      "fontSizePx": 104,
+      "fontWeight": 900,
+      "color": "#FFFFFF",
+      "lineHeightPx": 110,
+      "letterSpacingPx": -2,
+      "maxLines": 3,
+      "background": null,
+      "shadow": {
+        "xPx": 0,
+        "yPx": 7,
+        "blurPx": 14,
+        "color": "#000000",
+        "opacity": 0.82
+      },
+      "stroke": null,
+      "lineGapPx": 0,
+      "appearance": "cut",
+      "alternateColors": [
+        "#75E7ED"
+      ]
+    },
+    {
+      "id": "subtitle",
+      "position": {
+        "x": 504,
+        "y": 916,
+        "anchor": "center"
+      },
+      "maxWidthPx": 800,
+      "textAlign": "center",
+      "fontFamilies": [
+        "Pretendard",
+        "Noto Sans KR",
+        "sans-serif"
+      ],
+      "fontSizePx": 43,
+      "fontWeight": 650,
+      "color": "#FFF5E7",
+      "lineHeightPx": 53,
+      "letterSpacingPx": 0.5,
+      "maxLines": 1,
+      "background": null,
+      "shadow": {
+        "xPx": 0,
+        "yPx": 3,
+        "blurPx": 9,
+        "color": "#120D16",
+        "opacity": 0.85
+      },
+      "stroke": null,
+      "lineGapPx": 0,
+      "appearance": "cut"
+    }
+  ],
+  "photoShade": "linear-gradient(180deg, #100D16A3 0%, #100D1696 23%, #100D1678 43%, #100D1618 66%, #100D1600 84%)"
+}

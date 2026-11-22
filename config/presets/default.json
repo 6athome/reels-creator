@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "captions": {
+    "fontFamily": "sans-serif",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "anchor": "bottom-center",
+    "bottomMargin": 180
+  }
+}
